@@ -125,38 +125,6 @@ float point(vec3 p, vec3 c, float e,float R)
   return e*falloff(length(p-c),R);
 }
 
-float cylindre(in vec3 p, in vec3 a, in vec3 b,float rayon, float e, float R){
-  float d;
-  vec3 ab = (b-a)/length(b-a);
-  if(dot(p-a,ab)<0.0){
-      float ph = dot(p-a,ab);
-      float ch = sqrt( dot(p-a, p-a) - ph*ph );
-      if(ch < rayon){
-          d = abs(ph);}
-      else{
-          float qh = ch - rayon;
-          d = sqrt(qh*qh + ph*ph);
-      }
-  }
-  
-  else if(dot(p-b,ab)>0.0){
-      float ph = dot(p-b,ab);
-      float ch = sqrt( dot(p-b, p-b) - ph*ph );
-      if(ch < rayon){
-          d = abs(ph);}
-      else{
-          float qh = ch - rayon;
-          d = sqrt(qh*qh + ph*ph);
-      }
-  }
-  else{
-	  float t = dot(p-a,ab);
-	  d = length(a+t*ab-p)-rayon;
-  }
-  return e*falloff(d,R);
-}
-
-
 // Segment
 // p : point
 // a : extrémité 1 du segment
@@ -262,6 +230,62 @@ float clou(in vec3 p, in vec3 a, in vec3 b, float r, float e, float R){
   return e*falloff(d,R);
 }
 
+// Cylindre
+float cylindre(in vec3 p, in vec3 a, in vec3 b, float rayon, float e, float R){
+  float d;
+  vec3 ab = (b-a)/length(b-a);
+  if(dot(p-a,ab)<0.0){
+      float ph = dot(p-a,ab);
+      float ch = sqrt( dot(p-a, p-a) - ph*ph );
+      if(ch < rayon){
+          d = abs(ph);}
+      else{
+          float qh = ch - rayon;
+          d = sqrt(qh*qh + ph*ph);
+      }
+  }
+  
+  else if(dot(p-b,ab)>0.0){
+      float ph = dot(p-b,ab);
+      float ch = sqrt( dot(p-b, p-b) - ph*ph );
+      if(ch < rayon){
+          d = abs(ph);}
+      else{
+          float qh = ch - rayon;
+          d = sqrt(qh*qh + ph*ph);
+      }
+  }
+  else{
+	  float t = dot(p-a,ab);
+	  d = length(a+t*ab-p)-rayon;
+  }
+  return e*falloff(d,R);
+}
+
+
+
+// Colonne
+float colonne(in vec3 p, in vec3 a, in vec3 b, float rayon, float e, float R){
+	float d;
+	float offset = 0.28;
+	float offsetCube = 0.125;
+	d = cylindre(p, a, b, rayon, e, R);
+	
+	for(float i=0.0;i<12.0; i++){
+        
+        vec3 newA = vec3(a.x + cos(i*3.14/6.0)*(rayon+rayon*offset), a.y - 2.0, a.z + sin(i*3.14/6.0)*(rayon+rayon*offset) );
+        
+		vec3 newB = vec3(b.x + cos(i*3.14/6.0)*(rayon+rayon*offset), b.y + 2.0, b.z + sin(i*3.14/6.0)*(rayon+rayon*offset) );
+		
+		d = Difference(d, cylindre( p, newA, newB , rayon/8.0, e, R*rayon/8.0 ) );
+		
+		d = Union(d, cube(p, vec3(a.xy, a.z), e, R*rayon/4.0, vec3( (rayon+R)*1.5, offsetCube, (rayon+R)*1.5 ) ) );
+		d = Union(d, cube(p, vec3(b.xy, b.z), e, R*rayon/4.0, vec3( (rayon+R)*1.5, offsetCube, (rayon+R)*1.5 ) ) );
+	}
+	
+	return d;
+}
+
 
 // Potential field of the object
 // p : point
@@ -313,8 +337,10 @@ float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions,
   
   //float v = disque(p, vec3(0,0,0), vec3(1,0,0), 2.0, 1.0, 4.0 );
 
-  float v = cylindre(p, vec3(-3,0,0), vec3(3,0,0),2.0, 1.0, 1.0);  
+  //float v = cylindre(p, vec3(-3,0,0), vec3(3,0,0),2.0, 1.0, 1.0);  
   //float v = cercle(p, vec3(0.0, 0.0,0.0),vec3(0.5, 0.2,0.0),3.0,0.6,1.0);
+  
+  float v = colonne(p, vec3(0,-3,0), vec3(0,3,0), 1.0, 1.0, 1.0);  
   
   return v-T;
 }
