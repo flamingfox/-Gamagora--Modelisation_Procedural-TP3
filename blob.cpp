@@ -80,7 +80,6 @@ float Difference(float a,float b)
     return a-b;
 }
 
-
 //***************************************//
 //******	Primitive functions		*****//
 //***************************************//
@@ -111,6 +110,23 @@ float seg(in vec3 p, in vec3 a, in vec3 b, float e, float R){
 	  d = length(a+t*ab-p);
   }
   return e*falloff(d,R);
+}
+
+// Cercle
+// p : point
+// c : centre du cercle
+// n : direction du cercle
+//rayon : rayon interne du cercle
+// e : energy associated to skeleton
+// R : segment radius
+float cercle(vec3 p, vec3 c, vec3 n,float rayon, float e, float R)
+{
+    vec3 normal = normalize(n);
+	float ph = dot(normal,p-c);
+	float ch = sqrt(dot(p-c,p-c)-(ph*ph));
+	float qh = ch - rayon;
+	float d = sqrt((qh*qh)+(ph*ph));
+	return e*falloff(d,R);
 }
 
 // Cube
@@ -162,6 +178,8 @@ float Humain(vec3 p)
 }
 
 
+
+
 // Potential field of the object
 // p : point
 float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions, intersection etc
@@ -182,9 +200,11 @@ float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions,
   /*float v = seg(p, vec3(0,0,0), vec3(3,0,0), 1.0, 1.0);  
   float x = cos(-iGlobalTime*0.1*3.14), y = sin(iGlobalTime*0.1*3.14);
   v = Union(v, seg(p, vec3(0,0,0), vec3(x*3.0,y*3.0, 0), 1.0, 1.0));*/
-
+/*
   float v = cube(p, vec3(0.0, 2.0,3.0),3.0,vec3(4.,4.,4.));
   v = Blend(v,cube(p, vec3(1.0, 1.0,0.0),3.0,vec3(4.,4.,4.)));
+ */ 
+  float v = cercle(p, vec3(0.0, 0.0,0.0),vec3(0.5, 0.2,0.0),3.0,0.6,1.0);
   
   return v-T;
 }
