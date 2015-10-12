@@ -9,7 +9,10 @@ const float T=0.5;
 const float rA=10.0; // Maximum ray marching or sphere tracing distance from origin
 const float rB=40.0; // Minimum
 
-// Transforms
+//***************************************//
+//*****			Transformations		*****//
+//***************************************//
+
 vec3 rotateX(vec3 p, float a)
 {
   float sa = sin(a);
@@ -31,10 +34,6 @@ vec3 rotateZ(vec3 p, float a)
   return vec3(ca*p.x + sa*p.y, -sa*p.x + ca*p.y, p.z);
 }
 
-float seg(in vec3 p, in vec3 a, in vec3 b, float e, float r){
-	
-}
-
 // Smooth falloff function
 // r : small radius
 // R : Large radius
@@ -45,17 +44,9 @@ float falloff( float r, float R ) //fonction G du cours
   return y*y*y;
 }
 
-// Primitive functions
-
-// Point skeleton
-// p : point
-// c : center of skeleton
-// e : energy associated to skeleton
-// R : large radius
-float point(vec3 p, vec3 c, float e,float R)
-{
-  return e*falloff(length(p-c),R);
-}
+//***************************************//
+//******	Primitive Operations	*****//
+//***************************************//
 
 // Blending
 // a : field function of left sub-tree
@@ -89,18 +80,115 @@ float Difference(float a,float b)
     return a-b;
 }
 
+
+//***************************************//
+//******	Primitive functions		*****//
+//***************************************//
+
+// Point skeleton
+// p : point
+// c : center of skeleton
+// e : energy associated to skeleton
+// R : large radius
+float point(vec3 p, vec3 c, float e,float R)
+{
+  return e*falloff(length(p-c),R);
+}
+
+// Segment
+// p : point
+// a : extrémité 1 du segment
+// b : extrémité 2 du segment
+// e : energy associated to skeleton
+// R : segment radius
+float seg(in vec3 p, in vec3 a, in vec3 b, float e, float R){
+  float d;
+  vec3 ab = (b-a)/length(b-a);
+  if(dot(p-a,ab)<0.0){d=length(p-a);}
+  else if(dot(p-b,ab)>0.0){d=length(p-b);}
+  else{
+	  float t = dot(p-a,ab);
+	  d = length(a+t*ab-p);
+  }
+  return e*falloff(d,R);
+}
+
+// Cube
+// p : point
+// c : center of cube
+// e : energy associated to skeleton
+// coteCube : largeur cube
+float cube(vec3 p, vec3 c, float e, vec3 coteCube)
+{
+    p = p - c;
+    coteCube = coteCube/2.0;
+    
+    float x = falloff(abs(p.x), coteCube.x);
+    if(x <= 0.)
+        return x;
+        
+    float y = falloff(abs(p.y), coteCube.y);
+    if(y <= 0.)
+        return y;
+    
+    float z = falloff(abs(p.z), coteCube.z);
+    if(z <= 0.)
+        return z;
+    
+    return e * min(min(x, y), z);
+}
+
+// Potential field of the object
+// p : point
+float Humain(vec3 p)
+{
+  p.z=-p.z;
+
+  float v = Blend(point(p, vec3(0.0, 0.0, 0.0), 1.0, 4.5),
+                  point(p, vec3(0.0, 3.7, 0.0), 6.5, 2.0));
+    
+    //bras
+  v=Blend(v,point(p,vec3(-4.0, 1.0,0.0),0.5,3.5));
+  v=Blend(v,point(p,vec3(4.0, 1.0,0.0),0.5,3.5));
+    
+    //jambe
+  v=Blend(v,point(p,vec3(-1.6, -3.0,0.0),0.5,2.5));
+  v=Blend(v,point(p,vec3(1.6, -3.0,0.0),0.5,2.5));
+    
+  v=Blend(v,point(p,vec3(-2.0, -5.0,0.0),0.5,2.5));
+  v=Blend(v,point(p,vec3(2.0, -5.0,0.0),0.5,2.5));
+    
+  return v;
+}
+
+
 // Potential field of the object
 // p : point
 float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions, intersection etc
 {
   p.z=-p.z; //pour afficher l'objet à l'endroit
+  
+  //cacahuète du prof
+  /*
   float v = Blend(point(p,vec3( 0.0, 1.0, 1.0),1.0,4.5),
                   point(p,vec3( 2.0, 0.0,-3.0),1.0,4.5));
 
   v=Blend(v,point(p,vec3(-3.0, 2.0,-3.0),1.0,4.5));
   v=Union(v,point(p,vec3(-1.0, -1.0, 0.0),1.0,4.5));
+  */
+
+  //float v = Humain(p);
+  
+  /*float v = seg(p, vec3(0,0,0), vec3(3,0,0), 1.0, 1.0);  
+  float x = cos(-iGlobalTime*0.1*3.14), y = sin(iGlobalTime*0.1*3.14);
+  v = Union(v, seg(p, vec3(0,0,0), vec3(x*3.0,y*3.0, 0), 1.0, 1.0));*/
+
+  float v = cube(p, vec3(0.0, 2.0,3.0),3.0,vec3(4.,4.,4.));
+  v = Blend(v,cube(p, vec3(1.0, 1.0,0.0),3.0,vec3(4.,4.,4.)));
+  
   return v-T;
 }
+
 
 // Calculate object normal
 // p : point
@@ -114,6 +202,10 @@ vec3 ObjectNormal(in vec3 p )
   n.z = object( vec3(p.x, p.y, p.z+eps) ) - v;
   return normalize(n);
 }
+
+//***************************************//
+//******		Tracing				*****//
+//***************************************//
 
 // Trace ray using ray marching
 // o : ray origin
