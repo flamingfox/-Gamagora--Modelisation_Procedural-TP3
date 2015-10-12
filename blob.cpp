@@ -94,6 +94,38 @@ float point(vec3 p, vec3 c, float e,float R)
   return e*falloff(length(p-c),R);
 }
 
+float cylindre(in vec3 p, in vec3 a, in vec3 b,float rayon, float e, float R){
+  float d;
+  vec3 ab = (b-a)/length(b-a);
+  if(dot(p-a,ab)<0.0){
+      float ph = dot(p-a,ab);
+      float ch = sqrt( dot(p-a, p-a) - ph*ph );
+      if(ch < rayon){
+          d = abs(ph);}
+      else{
+          float qh = ch - rayon;
+          d = sqrt(qh*qh + ph*ph);
+      }
+  }
+  
+  else if(dot(p-b,ab)>0.0){
+      float ph = dot(p-b,ab);
+      float ch = sqrt( dot(p-b, p-b) - ph*ph );
+      if(ch < rayon){
+          d = abs(ph);}
+      else{
+          float qh = ch - rayon;
+          d = sqrt(qh*qh + ph*ph);
+      }
+  }
+  else{
+	  float t = dot(p-a,ab);
+	  d = length(a+t*ab-p)-rayon;
+  }
+  return e*falloff(d,R);
+}
+
+
 // Segment
 // p : point
 // a : extrémité 1 du segment
@@ -203,9 +235,6 @@ float Humain(vec3 p)
   return v;
 }
 
-
-
-
 // Potential field of the object
 // p : point
 float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions, intersection etc
@@ -231,8 +260,8 @@ float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions,
   v = Blend(v,cube(p, vec3(1.0, 1.0,0.0),3.0,vec3(4.,4.,4.)));*/
   
   //float v = disque(p, vec3(0,0,0), vec3(1,0,0), 2.0, 1.0, 4.0 );
-
-  float v = cercle(p, vec3(0.0, 0.0,0.0),vec3(0.5, 0.2,0.0),3.0,0.6,1.0);
+  float v = cylindre(p, vec3(-3,0,0), vec3(3,0,0),2.0, 1.0, 1.0);  
+  //float v = cercle(p, vec3(0.0, 0.0,0.0),vec3(0.5, 0.2,0.0),3.0,0.6,1.0);
   
   return v-T;
 }
