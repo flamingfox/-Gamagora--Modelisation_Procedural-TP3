@@ -80,7 +80,6 @@ float Difference(float a,float b)
     return a-b;
 }
 
-
 //***************************************//
 //******	Primitive functions		*****//
 //***************************************//
@@ -113,29 +112,47 @@ float seg(in vec3 p, in vec3 a, in vec3 b, float e, float R){
   return e*falloff(d,R);
 }
 
+// Cercle
+// p : point
+// c : centre du cercle
+// n : direction du cercle
+//rayon : rayon interne du cercle
+// e : energy associated to skeleton
+// R : segment radius
+float cercle(vec3 p, vec3 c, vec3 n,float rayon, float e, float R)
+{
+    vec3 normal = normalize(n);
+	float ph = dot(normal,p-c);
+	float ch = sqrt(dot(p-c,p-c)-(ph*ph));
+	float qh = ch - rayon;
+	float d = sqrt((qh*qh)+(ph*ph));
+	return e*falloff(d,R);
+}
+
 // Cube
 // p : point
 // c : center of cube
 // e : energy associated to skeleton
-// coteCube : largeur cube
-float cube(vec3 p, vec3 c, float e, vec3 coteCube)
+// R : distance au cube
+// cote : largeur cube
+float cube(vec3 p, vec3 c, float e, float R, vec3 cote)
 {
     p = p - c;
-    coteCube = coteCube/2.0;
+    cote = cote/2.0;
+    p = abs(p);
+    float val = 0.0;
     
-    float x = falloff(abs(p.x), coteCube.x);
-    if(x <= 0.)
-        return x;
-        
-    float y = falloff(abs(p.y), coteCube.y);
-    if(y <= 0.)
-        return y;
+    if(p.x > cote.x)
+        val += (cote.x - p.x)*(cote.x - p.x);
     
-    float z = falloff(abs(p.z), coteCube.z);
-    if(z <= 0.)
-        return z;
+    if(p.y > cote.y)
+        val += (cote.y - p.y)*(cote.y - p.y);
     
-    return e * min(min(x, y), z);
+    if(p.z > cote.z)
+        val += (cote.z - p.z)*(cote.z - p.z);
+    
+    
+    return e * falloff(val, R);
 }
 
 // Disque
@@ -187,6 +204,8 @@ float Humain(vec3 p)
 }
 
 
+
+
 // Potential field of the object
 // p : point
 float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions, intersection etc
@@ -211,7 +230,9 @@ float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions,
   /*float v = cube(p, vec3(0.0, 2.0,3.0),3.0,vec3(4.,4.,4.));
   v = Blend(v,cube(p, vec3(1.0, 1.0,0.0),3.0,vec3(4.,4.,4.)));*/
   
-  float v = disque(p, vec3(0,0,0), vec3(1,0,0), 2.0, 1.0, 4.0 );
+  //float v = disque(p, vec3(0,0,0), vec3(1,0,0), 2.0, 1.0, 4.0 );
+
+  float v = cercle(p, vec3(0.0, 0.0,0.0),vec3(0.5, 0.2,0.0),3.0,0.6,1.0);
   
   return v-T;
 }
