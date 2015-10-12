@@ -81,6 +81,37 @@ float Difference(float a,float b)
 }
 
 //***************************************//
+//**************  WARP  *****************//
+//***************************************//
+
+float hash( float n )
+{
+    return fract(sin(n)*43758.5453123);
+}
+
+// 3d noise function
+float noise( in vec3 x )
+{
+    vec3 p = floor(x);
+    vec3 f = fract(x);
+    f = f*f*(3.0-2.0*f);
+    float n = p.x + p.y*57.0 + 113.0*p.z;
+    float res = mix(mix(mix( hash(n+  0.0), hash(n+  1.0),f.x),
+                        mix( hash(n+ 57.0), hash(n+ 58.0),f.x),f.y),
+                    mix(mix( hash(n+113.0), hash(n+114.0),f.x),
+                        mix( hash(n+170.0), hash(n+171.0),f.x),f.y),f.z);
+    return res;
+}
+
+vec3 warp(vec3 p)
+{
+
+ 	float val = noise(p*(0.2+0.2*sin(iGlobalTime)+0.2*cos(iGlobalTime*0.7)+0.2*sin(iGlobalTime*1.5)+0.2*cos(iGlobalTime*2.4)));//*sin(iGlobalTime));
+    p *= (cos(val));//-cos(iGlobalTime*1.3);//vec3(val,val,val);
+    return p;
+}
+
+//***************************************//
 //******	Primitive functions		*****//
 //***************************************//
 
@@ -260,7 +291,8 @@ float Humain(vec3 p)
 float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions, intersection etc
 {
   p.z=-p.z; //pour afficher l'objet à l'endroit
-  
+  p = warp(vec3(p.xyz));
+    
   //cacahuète du prof
   /*
   float v = Blend(point(p,vec3( 0.0, 1.0, 1.0),1.0,4.5),
@@ -300,6 +332,9 @@ vec3 ObjectNormal(in vec3 p )
   n.z = object( vec3(p.x, p.y, p.z+eps) ) - v;
   return normalize(n);
 }
+
+
+
 
 //***************************************//
 //******		Tracing				*****//
@@ -449,4 +484,5 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
   fragColor=vec4(rgb, 1.0);
 }
+
 
