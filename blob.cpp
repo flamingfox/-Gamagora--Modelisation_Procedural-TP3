@@ -117,25 +117,26 @@ float seg(in vec3 p, in vec3 a, in vec3 b, float e, float R){
 // p : point
 // c : center of cube
 // e : energy associated to skeleton
-// coteCube : largeur cube
-float cube(vec3 p, vec3 c, float e, vec3 coteCube)
+// R : distance au cube
+// cote : largeur cube
+float cube(vec3 p, vec3 c, float e, float R, vec3 cote)
 {
     p = p - c;
-    coteCube = coteCube/2.0;
+    cote = cote/2.0;
+    p = abs(p);
+    float val = 0.0;
     
-    float x = falloff(abs(p.x), coteCube.x);
-    if(x <= 0.)
-        return x;
-        
-    float y = falloff(abs(p.y), coteCube.y);
-    if(y <= 0.)
-        return y;
+    if(p.x > cote.x)
+        val += (cote.x - p.x)*(cote.x - p.x);
     
-    float z = falloff(abs(p.z), coteCube.z);
-    if(z <= 0.)
-        return z;
+    if(p.y > cote.y)
+        val += (cote.y - p.y)*(cote.y - p.y);
     
-    return e * min(min(x, y), z);
+    if(p.z > cote.z)
+        val += (cote.z - p.z)*(cote.z - p.z);
+    
+    
+    return e * falloff(val, R);
 }
 
 // Potential field of the object
@@ -183,8 +184,9 @@ float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions,
   float x = cos(-iGlobalTime*0.1*3.14), y = sin(iGlobalTime*0.1*3.14);
   v = Union(v, seg(p, vec3(0,0,0), vec3(x*3.0,y*3.0, 0), 1.0, 1.0));*/
 
-  float v = cube(p, vec3(0.0, 2.0,3.0),3.0,vec3(4.,4.,4.));
-  v = Blend(v,cube(p, vec3(1.0, 1.0,0.0),3.0,vec3(4.,4.,4.)));
+    float v = cube(p, vec3(0.0, 2.0,3.0),1.0,2.0,vec3(2.,2.,2.));
+    p = rotateZ(p,0.5);
+    v = Blend(v,cube(p, vec3(1.0, 0.0,0.0),2.0, 0.5,vec3(2.,2.,2.)));
   
   return v-T;
 }
