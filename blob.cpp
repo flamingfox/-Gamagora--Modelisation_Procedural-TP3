@@ -159,7 +159,7 @@ float cube(vec3 p, vec3 c, float e, float R, vec3 cote)
 // p : point
 // c : centre du disque
 // n : normal du disque
-// h : hauteur du disque
+// rayon : rayon du disque
 // e : energy associated to skeleton
 // R : segment radius
 float disque(in vec3 p, in vec3 c, in vec3 n, float rayon, float e, float R){
@@ -179,6 +179,26 @@ float disque(in vec3 p, in vec3 c, in vec3 n, float rayon, float e, float R){
   }
   return e*falloff(d,R);
 }
+
+
+// clou
+// p : point
+// a : extrémité 1 du segment
+// b : extrémité 2 du segment
+// e : energy associated to skeleton
+// R : segment radius
+float clou(in vec3 p, in vec3 a, in vec3 b, float r, float e, float R){
+  float d;
+  vec3 ab = (b-a)/length(b-a);
+  if(dot(p-a,ab)<-r){d=length(p-a)-r;}
+  else if(dot(p-b,ab)>r){d=length(p-b);}
+  else{
+	  float t = dot(p-a,ab);
+	  d = length(a+t*ab-p);
+  }
+  return e*falloff(d,R);
+}
+
 
 // Potential field of the object
 // p : point
@@ -232,7 +252,9 @@ float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions,
   
   //float v = disque(p, vec3(0,0,0), vec3(1,0,0), 2.0, 1.0, 4.0 );
 
-  float v = cercle(p, vec3(0.0, 0.0,0.0),vec3(0.5, 0.2,0.0),3.0,0.6,1.0);
+    
+//float v = cylindre(in vec3 p, in vec3 a, in vec3 b, float r, float e, float R){
+  float v = clou(p, vec3(0.0,0.0,0.0),vec3(0.2, 0.0,0.0), 3.0, 4.0,1.0);
   
   return v-T;
 }
