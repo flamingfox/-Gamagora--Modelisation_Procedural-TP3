@@ -138,6 +138,31 @@ float cube(vec3 p, vec3 c, float e, vec3 coteCube)
     return e * min(min(x, y), z);
 }
 
+// Disque
+// p : point
+// c : centre du disque
+// n : normal du disque
+// h : hauteur du disque
+// e : energy associated to skeleton
+// R : segment radius
+float disque(in vec3 p, in vec3 c, in vec3 n, float rayon, float e, float R){
+  
+  n = normalize(n);
+  
+  float ph = dot(n, p-c);
+  float ch = sqrt( dot(p-c, p-c) - ph*ph );
+  float d;
+  
+  if(ch < rayon){
+	  d = abs(ph);
+  }
+  else{
+	  float qh = ch - rayon;
+	  d = sqrt(qh*qh + ph*ph);
+  }
+  return e*falloff(d,R);
+}
+
 // Potential field of the object
 // p : point
 float Humain(vec3 p)
@@ -180,11 +205,13 @@ float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions,
   //float v = Humain(p);
   
   /*float v = seg(p, vec3(0,0,0), vec3(3,0,0), 1.0, 1.0);  
-  float x = cos(-iGlobalTime*0.1*3.14), y = sin(iGlobalTime*0.1*3.14);
+  float x = cos(iGlobalTime*0.1*3.14), y = sin(iGlobalTime*0.1*3.14);
   v = Union(v, seg(p, vec3(0,0,0), vec3(x*3.0,y*3.0, 0), 1.0, 1.0));*/
 
-  float v = cube(p, vec3(0.0, 2.0,3.0),3.0,vec3(4.,4.,4.));
-  v = Blend(v,cube(p, vec3(1.0, 1.0,0.0),3.0,vec3(4.,4.,4.)));
+  /*float v = cube(p, vec3(0.0, 2.0,3.0),3.0,vec3(4.,4.,4.));
+  v = Blend(v,cube(p, vec3(1.0, 1.0,0.0),3.0,vec3(4.,4.,4.)));*/
+  
+  float v = disque(p, vec3(0,0,0), vec3(1,0,0), 2.0, 1.0, 4.0 );
   
   return v-T;
 }
