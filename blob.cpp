@@ -106,9 +106,10 @@ float noise( in vec3 x )
 vec3 warp(vec3 p)
 {
 
- 	float val = noise(p);//*sin(iGlobalTime));
-    p += 0.4*sin(val+cos(iGlobalTime));//(sin(iGlobalTime+val)*sin(iGlobalTime))+(cos(iGlobalTime)*cos(iGlobalTime+val-0.1));//-cos(iGlobalTime*1.3);//vec3(val,val,val);
-    p -= 0.4*cos(val+sin(iGlobalTime/3.14));
+ 	float val = noise(p*0.75);//*sin(iGlobalTime));
+    val += noise(p*0.25);
+    p += 0.3*sin(val+cos(iGlobalTime));//(sin(iGlobalTime+val)*sin(iGlobalTime))+(cos(iGlobalTime)*cos(iGlobalTime+val-0.1));//-cos(iGlobalTime*1.3);//vec3(val,val,val);
+    p -= 0.3*cos(val+sin(iGlobalTime+46.0));
     return p;
 }
 
@@ -292,7 +293,7 @@ float colonne(in vec3 p, in vec3 a, in vec3 b, float rayon, float e, float R){
 	return d;
 }
 
-float vague(in vec3 p, in vec3 c, float rayon, float e, float R)
+float vague(in vec3 p, in vec3 c, float rayon, float periode, float amplitude, float e, float R)
 {
     float d = 0.0;
     vec3 pos = vec3(c.x,0,c.z)-vec3(p.x,0,p.z);
@@ -300,7 +301,7 @@ float vague(in vec3 p, in vec3 c, float rayon, float e, float R)
     if(dist > rayon)
         d += dist-rayon;
     
-    float val = sin(dist+iGlobalTime);
+    float val = sin(dist/periode+iGlobalTime)*amplitude;
     //float val = cos(pos.x)+sin(pos.z);
     d += abs((p.y-c.y)-val);
     
@@ -331,12 +332,30 @@ float Humain(vec3 p)
   return v;
 }
 
+float bassin(vec3 p)
+{
+ 	float v = cylindre(p, vec3(0,-4,0), vec3(0,-3,0), 10.0,1.0,1.0);
+    v = Difference(v, cylindre(p, vec3(0,-4,0), vec3(0,-3,0), 5.0,1.0,1.0));
+    v = Blend(v, vague(warp(vec3(p)), vec3(0,-3.5,0), 5.0, 0.15, 0.15,1.0,1.0));
+    
+
+              
+    v = Union(v, colonne(p, vec3(8,-1.8,0), vec3(8,3.0,0), 0.5, 1.0, 0.6)); 
+    v = Union(v, colonne(p, vec3(0,-1.8,8), vec3(0,3.0,8), 0.5, 1.0, 0.6)); 
+    v = Union(v, colonne(p, vec3(-8,-1.8,0), vec3(-8,3.0,0), 0.5, 1.0, 0.6)); 
+    v = Union(v, colonne(p, vec3(0,-1.8,-8), vec3(0,3.0,-8), 0.5, 1.0, 0.6));
+	
+    v = Union(v, cylindre(p, vec3(0,4.2,0), vec3(0,5,0), 10.0,1.0,1.0));
+    
+    return v;
+}
+
 // Potential field of the object
 // p : point
 float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions, intersection etc
 {
   p.z=-p.z; //pour afficher l'objet à l'endroit
-  p = warp(vec3(p));
+  //p = warp(vec3(p));
     
   //cacahuète du prof
   
@@ -361,9 +380,11 @@ float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions,
   //float v = cylindre(p, vec3(-3,0,0), vec3(3,0,0),2.0, 1.0, 1.0);  
   //float v = disque(p, vec3(0.0, 0.0,0.0),vec3(0.5, 0.2,0.0),3.0,0.6,1.0);
   
-  //float v = colonne(p, vec3(0,-3.5,0), vec3(0,3.5,0), 1.0, 1.0, 1.0);  
-  float v = vague(p, vec3(0,-3,0), 15.0,1.0,1.0);
-  return v-T;
+  //float v = colonne(p, vec3(0,-3.5,0), vec3(0,3.5,0), 1.0, 1.0, 1.0); 
+  //  	v+= colonne(p, vec3(0,-3.5,5), vec3(0,3.5,5), 1.0, 1.0, 1.0); 
+    
+  	float v = bassin(p);
+    return v-T;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -537,6 +558,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
   fragColor=vec4(rgb, 1.0);
 }
+
 
 
 
