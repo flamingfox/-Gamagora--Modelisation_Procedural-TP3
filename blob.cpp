@@ -106,8 +106,9 @@ float noise( in vec3 x )
 vec3 warp(vec3 p)
 {
 
- 	float val = noise(p*(0.2+0.2*sin(iGlobalTime)+0.2*cos(iGlobalTime*0.7)+0.2*sin(iGlobalTime*1.5)+0.2*cos(iGlobalTime*2.4)));//*sin(iGlobalTime));
-    p *= (cos(val));//-cos(iGlobalTime*1.3);//vec3(val,val,val);
+ 	float val = noise(p);//*sin(iGlobalTime));
+    p += 0.4*sin(val+cos(iGlobalTime));//(sin(iGlobalTime+val)*sin(iGlobalTime))+(cos(iGlobalTime)*cos(iGlobalTime+val-0.1));//-cos(iGlobalTime*1.3);//vec3(val,val,val);
+    p -= 0.4*cos(val+sin(iGlobalTime/3.14));
     return p;
 }
 
@@ -233,25 +234,25 @@ float clou(in vec3 p, in vec3 a, in vec3 b, float r, float e, float R){
 // Cylindre
 float cylindre(in vec3 p, in vec3 a, in vec3 b, float rayon, float e, float R){
   float d;
-  vec3 ab = (b-a)/length(b-a);
+  vec3 ab = normalize(b-a);
   if(dot(p-a,ab)<0.0){
       float ph = dot(p-a,ab);
-      float ch = sqrt( dot(p-a, p-a) - ph*ph );
-      if(ch < rayon){
+      float ch2 = dot(p-a, p-a) - ph*ph;
+      if(ch2 < rayon*rayon){
           d = abs(ph);}
       else{
-          float qh = ch - rayon;
+          float qh = sqrt(ch2) - rayon;
           d = sqrt(qh*qh + ph*ph);
       }
   }
   
   else if(dot(p-b,ab)>0.0){
       float ph = dot(p-b,ab);
-      float ch = sqrt( dot(p-b, p-b) - ph*ph );
-      if(ch < rayon){
+      float ch2 = dot(p-b, p-b) - ph*ph;
+      if(ch2 < rayon*rayon){
           d = abs(ph);}
       else{
-          float qh = ch - rayon;
+          float qh = sqrt(ch2) - rayon;
           d = sqrt(qh*qh + ph*ph);
       }
   }
@@ -268,22 +269,42 @@ float cylindre(in vec3 p, in vec3 a, in vec3 b, float rayon, float e, float R){
 float colonne(in vec3 p, in vec3 a, in vec3 b, float rayon, float e, float R){
 	float d;
 	float offset = 0.28;
-	float offsetCube = 0.125;
+	float offsetCube = 0.15;
 	d = cylindre(p, a, b, rayon, e, R);
 	
 	for(float i=0.0;i<12.0; i++){
+        vec3 pos = vec3(cos(i*3.14/6.0)*(rayon+rayon*offset), 0.0, sin(i*3.14/6.0)*(rayon+rayon*offset) );
         
-        vec3 newA = vec3(a.x + cos(i*3.14/6.0)*(rayon+rayon*offset), a.y - 2.0, a.z + sin(i*3.14/6.0)*(rayon+rayon*offset) );
-        
-		vec3 newB = vec3(b.x + cos(i*3.14/6.0)*(rayon+rayon*offset), b.y + 2.0, b.z + sin(i*3.14/6.0)*(rayon+rayon*offset) );
+        vec3 newA = pos + a;//vec3(a.x + cos(i*3.14/6.0)*(rayon+rayon*offset), a.y + 0.0, a.z + sin(i*3.14/6.0)*(rayon+rayon*offset) );
+		vec3 newB = pos + b;//vec3(b.x + cos(i*3.14/6.0)*(rayon+rayon*offset), b.y - 0.0, b.z + sin(i*3.14/6.0)*(rayon+rayon*offset) );
 		
-		d = Difference(d, cylindre( p, newA, newB , rayon/8.0, e, R*rayon/8.0 ) );
+		d = Difference(d, cylindre( p, newA, newB , rayon/8.0, e, R/8.0 ) );
 		
-		d = Union(d, cube(p, vec3(a.xy, a.z), e, R*rayon/4.0, vec3( (rayon+R)*1.5, offsetCube, (rayon+R)*1.5 ) ) );
-		d = Union(d, cube(p, vec3(b.xy, b.z), e, R*rayon/4.0, vec3( (rayon+R)*1.5, offsetCube, (rayon+R)*1.5 ) ) );
+		
 	}
+    float d2 = disque(p, a-vec3(0,R*0.7,0), normalize(b-a),rayon*1.5, e, R);
+    d2 = Blend(d2,disque(p, b+vec3(0,R*0.7,0), normalize(a-b),rayon*1.5, e, R));
+    d2 = Blend(d2, cube(p, vec3(a.x, a.y-R, a.z), e, 0.1, vec3( (rayon)*4., offsetCube, (rayon)*4. ) ) );
+	d2 = Blend(d2, cube(p, vec3(b.x, b.y+R, b.z), e, 0.1, vec3( (rayon)*4., offsetCube, (rayon)*4. ) ) );
 	
+    d = Union(d,d2);
+    
 	return d;
+}
+
+float vague(in vec3 p, in vec3 c, float rayon, float e, float R)
+{
+    float d = 0.0;
+    vec3 pos = vec3(c.x,0,c.z)-vec3(p.x,0,p.z);
+    float dist = length(pos);
+    if(dist > rayon)
+        d += dist-rayon;
+    
+    float val = sin(dist+iGlobalTime);
+    //float val = cos(pos.x)+sin(pos.z);
+    d += abs((p.y-c.y)-val);
+    
+    return e*falloff(d,R);
 }
 
 
@@ -315,16 +336,16 @@ float Humain(vec3 p)
 float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions, intersection etc
 {
   p.z=-p.z; //pour afficher l'objet à l'endroit
-  p = warp(vec3(p.xyz));
+  p = warp(vec3(p));
     
   //cacahuète du prof
-  /*
-  float v = Blend(point(p,vec3( 0.0, 1.0, 1.0),1.0,4.5),
+  
+  /*float v = Blend(point(p,vec3( 0.0, 1.0, 1.0),1.0,4.5),
                   point(p,vec3( 2.0, 0.0,-3.0),1.0,4.5));
 
   v=Blend(v,point(p,vec3(-3.0, 2.0,-3.0),1.0,4.5));
-  v=Union(v,point(p,vec3(-1.0, -1.0, 0.0),1.0,4.5));
-  */
+  v=Union(v,point(p,vec3(-1.0, -1.0, 0.0),1.0,4.5));*/
+  
 
   //float v = Humain(p);
   
@@ -338,12 +359,18 @@ float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions,
   //float v = disque(p, vec3(0,0,0), vec3(1,0,0), 2.0, 1.0, 4.0 );
 
   //float v = cylindre(p, vec3(-3,0,0), vec3(3,0,0),2.0, 1.0, 1.0);  
-  //float v = cercle(p, vec3(0.0, 0.0,0.0),vec3(0.5, 0.2,0.0),3.0,0.6,1.0);
+  //float v = disque(p, vec3(0.0, 0.0,0.0),vec3(0.5, 0.2,0.0),3.0,0.6,1.0);
   
-  float v = colonne(p, vec3(0,-3,0), vec3(0,3,0), 1.0, 1.0, 1.0);  
-  
+  //float v = colonne(p, vec3(0,-3.5,0), vec3(0,3.5,0), 1.0, 1.0, 1.0);  
+  float v = vague(p, vec3(0,-3,0), 15.0,1.0,1.0);
   return v-T;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 
 // Calculate object normal
@@ -510,5 +537,6 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
   fragColor=vec4(rgb, 1.0);
 }
+
 
 
