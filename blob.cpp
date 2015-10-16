@@ -1,7 +1,7 @@
 // Blobs
 // Eric Galin
 
-const int Steps = 1000;				//nb pas max
+const int Steps = 500;				//nb pas max
 const float Epsilon = 0.05; // Marching epsilon
 const float T=0.5;
 
@@ -42,6 +42,16 @@ float falloff( float r, float R ) //fonction G du cours
   float x = clamp(r/R,0.0,1.0);
   float y = (1.0-x*x);
   return y*y*y;
+}
+
+// Smooth falloff function au carré
+// r : small radius au carré
+// R : Large radius
+float falloff2( float r2, float R ) //fonction G du cours
+{
+    float x2 = clamp(r2/(R*R),0.0,1.0);
+    float y = (1.0-x2);		//x*x = (r/R)² == r²/R² == x2
+    return y*y*y;
 }
 
 //***************************************//
@@ -127,6 +137,12 @@ float point(vec3 p, vec3 c, float e,float R)
   return e*falloff(length(p-c),R);
 }
 
+float point2(vec3 p, vec3 c, float e,float R)
+{
+    vec3 pc = p-c;
+  	return e*falloff2(dot(pc,pc),R);
+}
+
 // Segment
 // p : point
 // a : extrémité 1 du segment
@@ -135,7 +151,7 @@ float point(vec3 p, vec3 c, float e,float R)
 // R : segment radius
 float seg(in vec3 p, in vec3 a, in vec3 b, float e, float R){
   float d;
-  vec3 ab = (b-a)/length(b-a);
+  vec3 ab = normalize(b-a);
   if(dot(p-a,ab)<0.0){d=length(p-a);}
   else if(dot(p-b,ab)>0.0){d=length(p-b);}
   else{
@@ -143,6 +159,26 @@ float seg(in vec3 p, in vec3 a, in vec3 b, float e, float R){
 	  d = length(a+t*ab-p);
   }
   return e*falloff(d,R);
+}
+
+float seg2(in vec3 p, in vec3 a, in vec3 b, float e, float R){
+  	float d2;
+  	vec3 ab = normalize(b-a);
+    vec3 pa = p-a;
+    if(dot(pa,ab)<0.0)
+        d2=dot(pa,pa);
+    else
+    {
+     	vec3 pb = p-b;
+        if(dot(pb,ab)>0.0)
+            d2=dot(pb,pb);
+        else{
+            float t = dot(pa,ab);	//pourcentage du point le plus proche sur le segment ab
+            vec3 tmp = a+t*ab-p;	//vecteur de distance entre le segment ab et le point p
+            d2 = dot(tmp,tmp);
+        }
+    }
+  	return e*falloff2(d2,R);
 }
 
 // Cercle
@@ -154,12 +190,29 @@ float seg(in vec3 p, in vec3 a, in vec3 b, float e, float R){
 // R : segment radius
 float cercle(vec3 p, vec3 c, vec3 n,float rayon, float e, float R)
 {
-    vec3 normal = normalize(n);
-	float ph = dot(normal,p-c);
-	float ch = sqrt(dot(p-c,p-c)-(ph*ph));
+    //vec3 normal = normalize(n);
+    vec3 pc = p-c;
+	float ph = dot(n,pc);
+	float ch = sqrt(dot(pc,pc)-(ph*ph));
 	float qh = ch - rayon;
 	float d = sqrt((qh*qh)+(ph*ph));
 	return e*falloff(d,R);
+}
+
+float cercle2(vec3 p, vec3 c, vec3 n,float rayon, float e, float R)
+{
+    //vec3 normal = normalize(n);
+    vec3 pc = p-c;
+	float ph = abs(dot(n,pc));
+    if(ph >= R)
+        return 0.0;
+    float pc2 = dot(pc,pc);
+    if(pc2 >= (rayon+R)*(rayon+R))
+        return 0.0;
+	float ch = sqrt(pc2-(ph*ph));	//pythagore a² = hypothénuse²-b²
+	float qh = ch - rayon;
+	float d2 = (qh*qh)+(ph*ph);
+	return e*falloff2(d2,R);
 }
 
 // Cube
@@ -168,13 +221,12 @@ float cercle(vec3 p, vec3 c, vec3 n,float rayon, float e, float R)
 // e : energy associated to skeleton
 // R : distance au cube
 // cote : largeur cube
-float cube(vec3 p, vec3 c, float e, float R, vec3 cote)
+float cube(vec3 p, vec3 c, vec3 cote, float e, float R)
 {
-    p = p - c;
+    p = abs(p - c);
     cote = cote/2.0;
-    p = abs(p);
-    float val = 0.0;
     
+    float val = 0.0;
     if(p.x > cote.x)
         val += (cote.x - p.x)*(cote.x - p.x);
     
@@ -197,20 +249,43 @@ float cube(vec3 p, vec3 c, float e, float R, vec3 cote)
 // R : segment radius
 float disque(in vec3 p, in vec3 c, in vec3 n, float rayon, float e, float R){
   
-  n = normalize(n);
+  	//n = normalize(n);
   
-  float ph = dot(n, p-c);
-  float ch = sqrt( dot(p-c, p-c) - ph*ph );
-  float d;
-  
-  if(ch < rayon){
-	  d = abs(ph);
-  }
-  else{
-	  float qh = ch - rayon;
-	  d = sqrt(qh*qh + ph*ph);
-  }
-  return e*falloff(d,R);
+    vec3 pc = p-c;
+  	float ph = dot(n, pc);
+  	float ch = sqrt(dot(pc, pc) - ph*ph);
+  	
+    float d;
+  	if(ch < rayon){	//le point est en dessus ou en dessous du disque
+	  	d = abs(ph);
+  	}
+    else{
+        float qh = ch - rayon;
+        d = sqrt(qh*qh + ph*ph);
+  	}
+ 	return e*falloff(d,R);
+}
+
+float disque2(in vec3 p, in vec3 c, in vec3 n, float rayon, float e, float R){
+    
+    vec3 pc = p-c;
+  	float ph = abs(dot(n, pc));
+    if(ph >= R)
+    	return 0.0;
+    
+  	float ch2 = dot(pc, pc) - ph*ph;
+  	
+  	if(ch2 <= rayon*rayon)	//le point est en dessus ou en dessous du disque
+	  	return e*falloff(ph,R);
+    else if(ch2 >= (rayon+R)*(rayon+R))
+        return 0.0;
+  	else{
+        float qh = sqrt(ch2) - rayon; 	//le point est en dehors du rayon du disque
+        if(qh >= R)
+            return 0.0;
+        float d2 = qh*qh + ph*ph;
+ 		return e*falloff2(d2,R);      
+  	}
 }
 
 
@@ -264,6 +339,61 @@ float cylindre(in vec3 p, in vec3 a, in vec3 b, float rayon, float e, float R){
   return e*falloff(d,R);
 }
 
+float cylindre2(in vec3 p, in vec3 a, in vec3 b, float rayon, float e, float R){
+  	vec3 ab = normalize(b-a);
+    
+    vec3 pa = p-a;
+	float ph = dot(pa,-ab);
+	//en dessous du disque de centre a
+    if(ph > 0.0){
+        //algo du disque
+		if(ph >= R)
+			return 0.0;
+        float ch2 = dot(pa, pa) - ph*ph;
+        if(ch2 < rayon*rayon)
+            return e*falloff(ph,R);
+		else if(ch2 >= (rayon+R)*(rayon+R))
+			return 0.0;
+        else{
+            float qh = sqrt(ch2) - rayon;
+            float d2 = qh*qh + ph*ph;
+			return e*falloff2(d2,R);
+        }
+    }
+	else{
+		vec3 pb = p-b;
+		float ph = dot(pb, ab);
+		//en dessus du disque de centre b
+		if(ph>0.0){
+            if(ph >= R)
+				return 0.0;
+			float ch2 = dot(pb, pb) - ph*ph;
+			if(ch2 < rayon*rayon)
+				return e*falloff(ph,R);
+			else if(ch2 >= (rayon+R)*(rayon+R))
+				return 0.0;
+			else{
+				float qh = sqrt(ch2) - rayon;
+				float d2 = qh*qh + ph*ph;
+				return e*falloff2(d2,R);
+			}
+		}
+		//entre les deux disque
+		else{
+			vec3 tmp = b+ph*ab-p;
+			float dist2 = dot(tmp,tmp);
+			if(dist2 <= rayon*rayon)
+				return e;
+			else if(dist2 >= (rayon+R)*(rayon+R))
+				return 0.0;
+			float d = length(b+ph*ab-p)-rayon;
+			return e*falloff(d,R);
+		}
+		
+	}
+    
+}
+
 
 
 // Colonne
@@ -271,7 +401,7 @@ float colonne(in vec3 p, in vec3 a, in vec3 b, float rayon, float e, float R){
 	float d;
 	float offset = 0.28;
 	float offsetCube = 0.15;
-	d = cylindre(p, a, b, rayon, e, R);
+	d = cylindre2(p, a, b, rayon, e, R);
 	
 	for(float i=0.0;i<12.0; i++){
         vec3 pos = vec3(cos(i*3.14/6.0)*(rayon+rayon*offset), 0.0, sin(i*3.14/6.0)*(rayon+rayon*offset) );
@@ -279,14 +409,14 @@ float colonne(in vec3 p, in vec3 a, in vec3 b, float rayon, float e, float R){
         vec3 newA = pos + a;//vec3(a.x + cos(i*3.14/6.0)*(rayon+rayon*offset), a.y + 0.0, a.z + sin(i*3.14/6.0)*(rayon+rayon*offset) );
 		vec3 newB = pos + b;//vec3(b.x + cos(i*3.14/6.0)*(rayon+rayon*offset), b.y - 0.0, b.z + sin(i*3.14/6.0)*(rayon+rayon*offset) );
 		
-		d = Difference(d, cylindre( p, newA, newB , rayon/8.0, e, R/8.0 ) );
+		d = Difference(d, cylindre2( p, newA, newB , rayon/8.0, e, R/8.0 ) );
 		
 		
 	}
     float d2 = disque(p, a-vec3(0,R*0.7,0), normalize(b-a),rayon*1.5, e, R);
     d2 = Blend(d2,disque(p, b+vec3(0,R*0.7,0), normalize(a-b),rayon*1.5, e, R));
-    d2 = Blend(d2, cube(p, vec3(a.x, a.y-R, a.z), e, 0.1, vec3( (rayon)*4., offsetCube, (rayon)*4. ) ) );
-	d2 = Blend(d2, cube(p, vec3(b.x, b.y+R, b.z), e, 0.1, vec3( (rayon)*4., offsetCube, (rayon)*4. ) ) );
+    d2 = Blend(d2, cube(p, vec3(a.x, a.y-R, a.z), vec3( (rayon)*4., offsetCube, (rayon)*4. ), e, 0.1 ));
+	d2 = Blend(d2, cube(p, vec3(b.x, b.y+R, b.z), vec3( (rayon)*4., offsetCube, (rayon)*4. ), e, 0.1 ));
 	
     d = Union(d,d2);
     
@@ -297,11 +427,13 @@ float vague(in vec3 p, in vec3 c, float rayon, float periode, float amplitude, f
 {
     float d = 0.0;
     vec3 pos = vec3(c.x,0,c.z)-vec3(p.x,0,p.z);
-    float dist = length(pos);
-    if(dist > rayon)
-        d += dist-rayon;
+    float dist2 = dot(pos,pos);
+    if(dist2 > (rayon+R)*(rayon+R))
+        return 0.0;
+    else if(dist2 > rayon*rayon)
+        d += sqrt(dist2)-rayon;
     
-    float val = sin(dist/periode+iGlobalTime)*amplitude;
+    float val = sin(sqrt(dist2)/periode+iGlobalTime)*amplitude;
     //float val = cos(pos.x)+sin(pos.z);
     d += abs((p.y-c.y)-val);
     
@@ -334,9 +466,9 @@ float Humain(vec3 p)
 
 float bassin(vec3 p)
 {
- 	float v = cylindre(p, vec3(0,-4,0), vec3(0,-3,0), 10.0,1.0,1.0);
-    v = Difference(v, cylindre(p, vec3(0,-4,0), vec3(0,-3,0), 5.0,1.0,1.0));
-    v = Blend(v, vague(warp(vec3(p)), vec3(0,-3.5,0), 5.0, 0.15, 0.15,1.0,1.0));
+ 	float v = cylindre2(p, vec3(0,-5,0), vec3(0,-3,0), 10.0,1.0,1.0);
+    v = Difference(v, cylindre2(p, vec3(0,-4,0), vec3(0,-3,0), 5.0,1.0,1.0));
+    v = Blend(v, vague(warp(vec3(p)), vec3(0,-3.5,0), 5.5, 0.15, 0.15,1.0,1.0));
     
 
               
@@ -345,48 +477,147 @@ float bassin(vec3 p)
     v = Union(v, colonne(p, vec3(-8,-1.8,0), vec3(-8,3.0,0), 0.5, 1.0, 0.6)); 
     v = Union(v, colonne(p, vec3(0,-1.8,-8), vec3(0,3.0,-8), 0.5, 1.0, 0.6));
 	
-    v = Union(v, cylindre(p, vec3(0,4.2,0), vec3(0,5,0), 10.0,1.0,1.0));
+    v = Union(v, cylindre2(p, vec3(0,4.2,0), vec3(0,5,0), 10.0,1.0,1.0));
     
     return v;
 }
+
+/*****************************************************************************************/
+/*********************************** test performance ************************************/
+
+//remarque: clamp dans falloff() est bizarrement plus rapide que: 
+//if(r<=0.0) return 1.0;
+//else if(r>=R) return 0.0;
+
+//test avec une carte graphique NVidia GT 745M (pas puissante apparemment
+
+
+//6 fps avec point()
+//8 fps avec point2()
+float testPoint(vec3 p)
+{
+    float v = 0.0;
+    for(int j = -4;	j <= 4;	j++)
+    {
+        for(int i = -5;	i <= 5;	i++)
+        {
+            v += point2(p, vec3(i,j,0), 1.0, 0.9);
+        }
+    }
+    return v;
+}
+
+//12 fps avec seg(), 
+//18 fps avec seg2()
+float testSeg(vec3 p)
+{
+    float v = 0.0;
+    float v2= 0.0;
+    for(int i = 0;	i < 8;	i++)
+    {
+        v = Union(v,seg2(p, vec3(0,3,0), vec3(3,3,0), 1.0, 1.0));  
+        float x = cos(iGlobalTime*0.1*3.14);
+        float y = sin(iGlobalTime*0.1*3.14);
+        v2 = Blend(v2,seg2(p, vec3(0,3,0), vec3(x*3.0,3.0+y*3.0, 0), 1.0, 1.0));
+        p = rotateX(p,3.14/4.0);
+    }
+    return Union(v,v2);
+}
+
+//20 fps avec cylindre()
+//23 fps avec cylindre2()
+float testCylindre(vec3 p)
+{
+    float v = 0.0;
+    for(int i = -3;	i <= 3;	i++)
+    {
+        v += cylindre2(p, vec3(0,-3,i*3), vec3(0,3,i*3), 0.5, 1.0, 1.0); 
+    }
+    return v;
+}
+
+//44 fps avec cercle()
+//50 fps avec cercle2()
+float testCercle(vec3 p)
+{
+ 	float v = 0.0;   
+    for(int i = -2;	i <= 2;	i++)
+    {
+        v += cercle2(p, vec3(0,i*2,0), vec3(0,1,0), 3.0, 1.0, 1.0);  
+    }
+    return v;
+}
+
+//42 fps avec disque()
+//40 fps avec disque2()
+float testDisque(vec3 p)
+{
+ 	float v = 0.0;   
+    for(int i = -2;	i <= 2;	i++)
+    {
+        v += disque2(p, vec3(0,i*2,0), vec3(0,1,0), 3.0, 1.0, 1.0);  
+    }
+    return v;
+}
+
+/*****************************************************************************************/
 
 // Potential field of the object
 // p : point
 float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions, intersection etc
 {
-  p.z=-p.z; //pour afficher l'objet à l'endroit
-  //p = warp(vec3(p));
+    p.z=-p.z; //pour afficher l'objet à l'endroit
+    //p = warp(p);
+	//p = rotateZ(p,0.5);    
     
-  //cacahuète du prof
-  
-  /*float v = Blend(point(p,vec3( 0.0, 1.0, 1.0),1.0,4.5),
-                  point(p,vec3( 2.0, 0.0,-3.0),1.0,4.5));
-
-  v=Blend(v,point(p,vec3(-3.0, 2.0,-3.0),1.0,4.5));
-  v=Union(v,point(p,vec3(-1.0, -1.0, 0.0),1.0,4.5));*/
-  
-
-  //float v = Humain(p);
-  
-  /*float v = seg(p, vec3(0,0,0), vec3(3,0,0), 1.0, 1.0);  
-  float x = cos(iGlobalTime*0.1*3.14), y = sin(iGlobalTime*0.1*3.14);
-  v = Union(v, seg(p, vec3(0,0,0), vec3(x*3.0,y*3.0, 0), 1.0, 1.0));*/
-
-  /*float v = cube(p, vec3(0.0, 2.0,3.0),3.0,vec3(4.,4.,4.));
-  v = Blend(v,cube(p, vec3(1.0, 1.0,0.0),3.0,vec3(4.,4.,4.)));*/
-  
-  //float v = disque(p, vec3(0,0,0), vec3(1,0,0), 2.0, 1.0, 4.0 );
-
-  //float v = cylindre(p, vec3(-3,0,0), vec3(3,0,0),2.0, 1.0, 1.0);  
-  //float v = disque(p, vec3(0.0, 0.0,0.0),vec3(0.5, 0.2,0.0),3.0,0.6,1.0);
-  
-  //float v = colonne(p, vec3(0,-3.5,0), vec3(0,3.5,0), 1.0, 1.0, 1.0); 
-  //  	v+= colonne(p, vec3(0,-3.5,5), vec3(0,3.5,5), 1.0, 1.0, 1.0); 
     
-  	float v = bassin(p);
+    //cacahuète du prof
+    float v;
+
+
+    /*float v = Blend(point(p,vec3( 0.0, 1.0, 1.0),1.0,4.5),
+	point(p,vec3( 2.0, 0.0,-3.0),1.0,4.5));
+
+	v=Blend(v,point(p,vec3(-3.0, 2.0,-3.0),1.0,4.5));
+	v=Union(v,point(p,vec3(-1.0, -1.0, 0.0),1.0,4.5));*/
+
+
+    //v = Humain(p);
+
+    /*float v = cube(p, vec3(0.0, 2.0,3.0),3.0,vec3(4.,4.,4.));
+	v = Blend(v,cube(p, vec3(1.0, 1.0,0.0),3.0,vec3(4.,4.,4.)));*/
+
+    //float v = disque(p, vec3(0,0,0), vec3(1,0,0), 2.0, 1.0, 4.0 );
+
+    //float v = cylindre(p, vec3(-4,0,0), vec3(4,0,0),1.0, 1.0, 1.0);  
+    //float v = disque(p, vec3(0.0, 0.0,0.0),vec3(0.5, 0.2,0.0),3.0,0.6,1.0);
+
+    //v = colonne(p, vec3(0,-3.5,0), vec3(0,3.5,0), 1.0, 1.0, 1.0); 
+    //  	v+= colonne(p, vec3(0,-3.5,5), vec3(0,3.5,5), 1.0, 1.0, 1.0); 
+    
+    
+    //v = vague(p, vec3(0,0,0), 15.0,0.3,0.2,1.0,1.0);
+    //v = bassin(p);
+    //v = testPoint(p);
+    v = testSeg(p);
+    //v = testCylindre(p);
+    //v = testCercle(p);
+    //v = testDisque(p);
     return v-T;
 }
 
+
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -558,7 +789,6 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
   fragColor=vec4(rgb, 1.0);
 }
-
 
 
 
