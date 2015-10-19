@@ -335,7 +335,6 @@ float cylindre(in vec3 p, in vec3 a, in vec3 b, float rayon, float e, float R){
 }
 
 
-
 // Colonne
 float colonne(in vec3 p, in vec3 a, in vec3 b, float rayon, float e, float R){
 	float d;
@@ -349,7 +348,7 @@ float colonne(in vec3 p, in vec3 a, in vec3 b, float rayon, float e, float R){
         vec3 newA = pos + a;//vec3(a.x + cos(i*3.14/6.0)*(rayon+rayon*offset), a.y + 0.0, a.z + sin(i*3.14/6.0)*(rayon+rayon*offset) );
 		vec3 newB = pos + b;//vec3(b.x + cos(i*3.14/6.0)*(rayon+rayon*offset), b.y - 0.0, b.z + sin(i*3.14/6.0)*(rayon+rayon*offset) );
 		
-		d = Difference(d, cylindre( p, newA, newB , rayon/8.0, e, R/8.0 ) );
+		d = Difference(d, cylindre( p, newA, newB, rayon/8.0, e, R/8.0 ) );
 		
 		
 	}
@@ -422,6 +421,30 @@ float bassin(vec3 p)
     
     return v;
 }
+
+//pris sur le code d' "antialias"
+vec3 hash3( float n ) { return fract(sin(vec3(n,n+1.0,n+2.0))*43758.5453123); }
+
+float bouleMouv(vec3 p)
+{
+    float v = 0.0;
+	
+        float time = (iGlobalTime);
+		
+    for(float i = 1.0;	i < 12.0;	i++)
+    {
+		float ra = pow(i/11.0,3.0);
+	    vec3  pos = 1.0*cos( 6.2831*hash3(i*14.0) + 0.5*(1.0-0.7*ra)*hash3(i*7.0)*time );
+		
+        
+                      
+    	v += point(p, pos*4.0, 1.0,3.0);
+    }
+    return v;
+}
+
+
+
 
 /*****************************************************************************************/
 /*********************************** test performance ************************************/
@@ -537,7 +560,10 @@ float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions,
     //v = testSeg(p);
     //v = testCylindre(p);
     //v = testCercle(p);
-    v = testDisque(p);
+    //v = testDisque(p);
+    
+    v = bouleMouv(p);
+    
     return v-T;
 }
 
@@ -640,7 +666,7 @@ float SphereTrace(vec3 o, vec3 u, out bool h,out int s)
           break;
       }
       // Move along ray
-      t += max(Epsilon,abs(v)/4.0); //le 4 à modifier si il y a des erreurs de shading
+      t += max(Epsilon,abs(v)/16.0); //le 4 à modifier si il y a des erreurs de shading
       // Escape marched far away
       if (t>rB)
       {
@@ -724,6 +750,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
   fragColor=vec4(rgb, 1.0);
 }
+
 
 
 
