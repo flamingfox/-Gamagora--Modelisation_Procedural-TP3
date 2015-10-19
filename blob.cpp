@@ -1,14 +1,9 @@
-// Blobs
-// Eric Galin
-
-const int Steps = 500;				//nb pas max
+const int Steps = 1000;
 const float Epsilon = 0.05; // Marching epsilon
 const float T=0.5;
 
-//à modifier si les objets ne s'affichent pas
 const float rA=10.0; // Maximum ray marching or sphere tracing distance from origin
 const float rB=40.0; // Minimum
-
 //***************************************//
 //*****			Transformations		*****//
 //***************************************//
@@ -87,7 +82,7 @@ float Intersection(float a,float b)
 // b : field function of right sub-tree
 float Difference(float a,float b)
 {
-    return a-b;
+    return min(a,2.0*T-b);
 }
 
 //***************************************//
@@ -750,7 +745,6 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
   fragColor=vec4(rgb, 1.0);
 }
-
 
 
 
