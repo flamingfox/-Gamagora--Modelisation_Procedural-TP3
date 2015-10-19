@@ -349,7 +349,7 @@ float colonne(in vec3 p, in vec3 a, in vec3 b, float rayon, float e, float R){
         vec3 newA = pos + a;//vec3(a.x + cos(i*3.14/6.0)*(rayon+rayon*offset), a.y + 0.0, a.z + sin(i*3.14/6.0)*(rayon+rayon*offset) );
 		vec3 newB = pos + b;//vec3(b.x + cos(i*3.14/6.0)*(rayon+rayon*offset), b.y - 0.0, b.z + sin(i*3.14/6.0)*(rayon+rayon*offset) );
 		
-		d = Difference(d, cylindre( p, newA, newB, rayon/8.0, e, R/8.0 ) );
+		d = Difference(d, cylindre( p, newA, newB, rayon/6.0, e, R/6.0 ) );
 		
 		
 	}
@@ -380,28 +380,6 @@ float vague(in vec3 p, in vec3 c, float rayon, float periode, float amplitude, f
     return e*falloff(d,R);
 }
 
-
-// Potential field of the object
-// p : point
-float Humain(vec3 p)
-{
-	float v = Blend(point(p, vec3(0.0, 0.0, 0.0), 1.0, 4.5),
-					point(p, vec3(0.0, 3.7, 0.0), 6.5, 2.0));
-    
-    //bras
-	v=Blend(v,point(p,vec3(-4.0, 1.0,0.0),0.5,3.5));
-	v=Blend(v,point(p,vec3(4.0, 1.0,0.0),0.5,3.5));
-    
-    //jambe
-	v=Blend(v,point(p,vec3(-1.6, -3.0,0.0),0.5,2.5));
-	v=Blend(v,point(p,vec3(1.6, -3.0,0.0),0.5,2.5));
-
-	v=Blend(v,point(p,vec3(-2.0, -5.0,0.0),0.5,2.5));
-	v=Blend(v,point(p,vec3(2.0, -5.0,0.0),0.5,2.5));
-
-	return v;
-}
-
 float bassin(vec3 p)
 {
 	//sol avec un trou
@@ -423,116 +401,6 @@ float bassin(vec3 p)
     return v;
 }
 
-//pris sur le code d' "antialias"
-vec3 hash3( float n ) { return fract(sin(vec3(n,n+1.0,n+2.0))*43758.5453123); }
-
-float bouleMouv(vec3 p)
-{
-    float v = 0.0;
-	float time = iGlobalTime;
-		
-    for(float i = 1.0;	i < 9.0;	i++)
-    {
-		float ra = pow(i/7.0,3.0);
-	    vec3  pos = 1.0*cos( 6.2831*hash3(i*14.0) + 0.5*(1.0-0.7*ra)*hash3(i*7.0)*time );	
-                      
-    	v += point(p, pos*4.0, 1.0,3.0);
-    }
-    return v;
-}
-
-float bouleSnake(vec3 p)
-{
-    float v = 0.0;
-	float time = iGlobalTime;
-		
-    for(float i = 1.0;	i < 16.0;	i++)
-    {
-        vec3 vi = vec3(i,i,i);
-        float n = noise(vi)*i+time;
-        float x = cos(n);
-        float y = sin(n);
-        float z = tan(n);
-                      
-    	v += point(p, vec3(x,y,z)*4.0, 1.0,2.0);
-    }
-    return v;
-}
-
-
-
-/*****************************************************************************************/
-/*********************************** test performance ************************************/
-
-//remarque: clamp dans falloff() est bizarrement plus rapide que: 
-//if(r<=0.0) return 1.0;
-//else if(r>=R) return 0.0;
-
-//test avec une carte graphique NVidia GT 745M (pas puissante apparemment
-
-
-//6 fps v1
-//8 fps v2
-float testPoint(vec3 p)
-{
-    float v = 0.0;
-    for(int j = -4;	j <= 4;	j++)    {
-        for(int i = -5;	i <= 5;	i++)        {
-            v += point(p, vec3(i,j,0), 1.0, 0.9);
-        }
-    }
-    return v;
-}
-
-//12 fps v1, 
-//18 fps v2
-float testSeg(vec3 p)
-{
-    float v = 0.0;
-    float v2= 0.0;
-    for(int i = 0;	i < 8;	i++)    {
-        v = Union(v,seg(p, vec3(0,3,0), vec3(3,3,0), 1.0, 1.0));  
-        float x = cos(iGlobalTime*0.1*3.14);
-        float y = sin(iGlobalTime*0.1*3.14);
-        v2 = Blend(v2,seg(p, vec3(0,3,0), vec3(x*3.0,3.0+y*3.0, 0), 1.0, 1.0));
-        p = rotateX(p,3.14/4.0);
-    }
-    return Union(v,v2);
-}
-
-//20 fps v1
-//23 fps v2
-float testCylindre(vec3 p)
-{
-    float v = 0.0;
-    for(int i = -3;	i <= 3;	i++)    {
-        v += cylindre(p, vec3(0,-3,i*3), vec3(0,3,i*3), 0.5, 1.0, 1.0); 
-    }
-    return v;
-}
-
-//44 fps v1
-//50 fps v2
-float testCercle(vec3 p)
-{
- 	float v = 0.0;   
-    for(int i = -2;	i <= 2;	i++)    {
-        v += cercle(p, vec3(0,i*2,0), vec3(0,1,0), 3.0, 1.0, 1.0);  
-    }
-    return v;
-}
-
-//42 fps avec disque()
-//40 fps avec disque2()
-float testDisque(vec3 p)
-{
- 	float v = 0.0;   
-    for(int i = -2;	i <= 2;	i++)    {
-        v += disque2(p, vec3(0,i*2,0), vec3(0,1,0), 3.0, 1.0, 1.0);  
-    }
-    return v;
-}
-
 /*****************************************************************************************/
 
 // Potential field of the object
@@ -540,68 +408,15 @@ float testDisque(vec3 p)
 float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions, intersection etc
 {
     p.z=-p.z; //pour afficher l'objet à l'endroit
-    //p = warp(p);
-	//p = rotateZ(p,0.5);    
-    
-    
-    //cacahuète du prof
     float v;
 
-
-    /*float v = Blend(point(p,vec3( 0.0, 1.0, 1.0),1.0,4.5),
-	point(p,vec3( 2.0, 0.0,-3.0),1.0,4.5));
-
-	v=Blend(v,point(p,vec3(-3.0, 2.0,-3.0),1.0,4.5));
-	v=Union(v,point(p,vec3(-1.0, -1.0, 0.0),1.0,4.5));*/
-
-
-    //v = Humain(p);
-
-    /*float v = cube(p, vec3(0.0, 2.0,3.0),3.0,vec3(4.,4.,4.));
-	v = Blend(v,cube(p, vec3(1.0, 1.0,0.0),3.0,vec3(4.,4.,4.)));*/
-
-    //float v = disque(p, vec3(0,0,0), vec3(1,0,0), 2.0, 1.0, 4.0 );
-
-    //float v = cylindre(p, vec3(-4,0,0), vec3(4,0,0),1.0, 1.0, 1.0);  
-    //float v = disque(p, vec3(0.0, 0.0,0.0),vec3(0.5, 0.2,0.0),3.0,0.6,1.0);
-
     //v = colonne(p, vec3(0,-3.5,0), vec3(0,3.5,0), 1.0, 1.0, 1.0); 
-    //  	v+= colonne(p, vec3(0,-3.5,5), vec3(0,3.5,5), 1.0, 1.0, 1.0); 
-    
-    
-    //v = vague(p, vec3(0,0,0), 15.0,0.3,0.2,1.0,1.0);
-    //v = bassin(p);
-    //v = testPoint(p);
-    //v = testSeg(p);
-    //v = testCylindre(p);
-    //v = testCercle(p);
-    //v = testDisque(p);
-    
-    //v = bouleMouv(p);
-    //v = bouleSnake(p);
-    v = Metamorphe(testCercle(p),testSeg(p));
-    
+    v = bassin(p);
     return v-T;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-
 
 // Calculate object normal
 // p : point
@@ -615,9 +430,6 @@ vec3 ObjectNormal(in vec3 p )
   n.z = object( vec3(p.x, p.y, p.z+eps) ) - v;
   return normalize(n);
 }
-
-
-
 
 //***************************************//
 //******		Tracing				*****//
