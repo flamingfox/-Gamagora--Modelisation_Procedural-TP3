@@ -85,6 +85,12 @@ float Difference(float a,float b)
     return min(a,2.0*T-b);
 }
 
+float Metamorphe(float a, float b)
+{
+    float time = sqrt((cos(iGlobalTime)+1.0)*0.5);
+    return a*time+b*(1.0-time);
+}
+
 //***************************************//
 //**************  WARP  *****************//
 //***************************************//
@@ -94,7 +100,7 @@ float hash( float n )
     return fract(sin(n)*43758.5453123);
 }
 
-// 3d noise function
+// 3d noise function reprit de "electron"
 float noise( in vec3 x )
 {
     vec3 p = floor(x);
@@ -423,21 +429,35 @@ vec3 hash3( float n ) { return fract(sin(vec3(n,n+1.0,n+2.0))*43758.5453123); }
 float bouleMouv(vec3 p)
 {
     float v = 0.0;
-	
-        float time = (iGlobalTime);
+	float time = iGlobalTime;
 		
-    for(float i = 1.0;	i < 12.0;	i++)
+    for(float i = 1.0;	i < 9.0;	i++)
     {
-		float ra = pow(i/11.0,3.0);
-	    vec3  pos = 1.0*cos( 6.2831*hash3(i*14.0) + 0.5*(1.0-0.7*ra)*hash3(i*7.0)*time );
-		
-        
+		float ra = pow(i/7.0,3.0);
+	    vec3  pos = 1.0*cos( 6.2831*hash3(i*14.0) + 0.5*(1.0-0.7*ra)*hash3(i*7.0)*time );	
                       
     	v += point(p, pos*4.0, 1.0,3.0);
     }
     return v;
 }
 
+float bouleSnake(vec3 p)
+{
+    float v = 0.0;
+	float time = iGlobalTime;
+		
+    for(float i = 1.0;	i < 16.0;	i++)
+    {
+        vec3 vi = vec3(i,i,i);
+        float n = noise(vi)*i+time;
+        float x = cos(n);
+        float y = sin(n);
+        float z = tan(n);
+                      
+    	v += point(p, vec3(x,y,z)*4.0, 1.0,2.0);
+    }
+    return v;
+}
 
 
 
@@ -557,7 +577,9 @@ float object(vec3 p) //c'est ici qu'on créer notre objet en faisant des unions,
     //v = testCercle(p);
     //v = testDisque(p);
     
-    v = bouleMouv(p);
+    //v = bouleMouv(p);
+    //v = bouleSnake(p);
+    v = Metamorphe(testCercle(p),testSeg(p));
     
     return v-T;
 }
